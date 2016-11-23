@@ -11,7 +11,7 @@ public class Edge {
 	public NodePortTuple srcPort;
 	public int dst;
 	public NodePortTuple dstPort;
-	public double capacity = 100000000; //100Mbit/s
+	public double capacity = 10000000; //10Mbit/s
 	public double bw;
 	public int delay;
 	

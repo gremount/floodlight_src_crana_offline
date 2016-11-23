@@ -378,7 +378,6 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 				t=rand.nextInt(numDpid);
 			}while(s==t);
 			//int flow = rand.nextInt(15)+2;
-			int flow = 409600*rand.nextInt(5);
 			Demand dem = new Demand(i, s, t, flow);
 			req.add(dem);			
 			outReq.println(dem.printDem());
@@ -394,7 +393,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		return "time x h" + (t+1) + " xterm -title d" + i + "_h" + (t+1) + "_recv -e ITGRecv -l log" + i + "\r\n"
 				+ "py time.sleep(0.5)\r\n"
 				+ "time x h" + (s+1) + " xterm -title d" + i + "_h" + (s+1) 
-				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C 100 -c 512 -t "+ FLOW_DURATION*60*1000 +" \r\n"
+				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C " + flow/512/8 +" -c 512 -t "+ FLOW_DURATION*60*1000 +" \r\n"
 				+ "py time.sleep(0.5)\r\n";
 	}
 	
