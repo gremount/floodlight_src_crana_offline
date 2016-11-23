@@ -73,7 +73,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	protected static String ROUTING_CHOICE = "TE";
 	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // 
 	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
-	public static final int FLOW_DURATION = 10;
+	public static final int FLOW_DURATION = 6;//6min 的打流时间
 	public static final int INITIAL_DEALY = 20;
 	public static final int PERIOD = 400;
 	public static final int BG_DEMAND_NUM = 20; //background demand num
@@ -340,7 +340,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		//int numDem = rand.nextInt(numDpid*(numDpid-1)/2) + 1;
 		//int numAppDem = rand.nextInt(numDem) + 1;
 		req.clear();
-		GenDemand(numDpid,numDpid*(numDpid-1)/2,"inputFile//req.txt", "inputFile//gt.txt");// 根据图的点数产生背景流需求
+		GenDemand(numDpid,numDpid,"inputFile//req.txt", "inputFile//gt.txt");// 根据图的点数产生背景流需求
 	}
 	
 	/**
@@ -359,7 +359,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 
 		outReq.println(numDem);
 	    
-		
+		/*
 		int k = 0;
 		for (int i = 0; i < numDpid; i++)
 			for(int j = i+1;  j < numDpid ; j++)
@@ -370,32 +370,32 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 				outReq.println(dem.printDem());
 				outTr.print(genTraffic(k++, i, j, flow));
 			}
+		*/
 		
-		/*
 		for (int i = 0; i < numDem; i++) {
 			int s = rand.nextInt(numDpid), t;
 			do{
 				t=rand.nextInt(numDpid);
 			}while(s==t);
 			//int flow = rand.nextInt(15)+2;
-			int flow = 409600;
+			int flow = 409600*rand.nextInt(5);
 			Demand dem = new Demand(i, s, t, flow);
 			req.add(dem);			
 			outReq.println(dem.printDem());
 			outTr.print(genTraffic( i, s, t, flow));
 		}
-		*/
+		
 		
 		outReq.close();
 		outTr.close();
 	}
 	
 	public String genTraffic(int i, int s, int t, int flow){
-		return "time x h" + (t+1) + " xterm -title d" + i + "_h" + (t+1) + "_recv -e ITGRecv\r\n"
-				+ "py time.sleep(0.1)\r\n"
+		return "time x h" + (t+1) + " xterm -title d" + i + "_h" + (t+1) + "_recv -e ITGRecv -l log" + i + "\r\n"
+				+ "py time.sleep(0.5)\r\n"
 				+ "time x h" + (s+1) + " xterm -title d" + i + "_h" + (s+1) 
 				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C 100 -c 512 -t "+ FLOW_DURATION*60*1000 +" \r\n"
-				+ "py time.sleep(0.1)\r\n";
+				+ "py time.sleep(0.5)\r\n";
 	}
 	
 	@Override
@@ -449,7 +449,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 			if(util_temp<lk.bw/lk.capacity)
 				util_temp=lk.bw/lk.capacity;
 		}
-		System.out.println("-----------  now utilization = "+util_temp);
+		System.err.println("-----------  now utilization = "+util_temp);
 		return util_temp;
 	}
 	
@@ -517,7 +517,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 			
 			Runnable test2 = new TestUtil();
 			ScheduledExecutorService service2 =Executors.newSingleThreadScheduledExecutor();
-			service2.scheduleAtFixedRate(test2, INITIAL_DEALY*3, FLOW_DURATION*60/3/UTILTESTNUM, TimeUnit.SECONDS);
+			service2.scheduleAtFixedRate(test2, FLOW_DURATION*60/3, FLOW_DURATION*60/3/UTILTESTNUM, TimeUnit.SECONDS);
 		}
 	}
 	
@@ -529,7 +529,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 				utilTestNum++;
 				utilSum+=util_temp;
 				if(utilTestNum==UTILTESTNUM){
-					System.out.println("************ 最大链路利用率 是  " + utilSum/utilTestNum + "  ***************");
+					System.err.println("************ 最大链路利用率 是  " + utilSum/utilTestNum + "  ***************");
 				}
 			}
 			catch(Exception e){
