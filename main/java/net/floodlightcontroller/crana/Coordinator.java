@@ -378,6 +378,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 				t=rand.nextInt(numDpid);
 			}while(s==t);
 			//int flow = rand.nextInt(15)+2;
+			int flow = 409600*(rand.nextInt(5)+1);
 			Demand dem = new Demand(i, s, t, flow);
 			req.add(dem);			
 			outReq.println(dem.printDem());
