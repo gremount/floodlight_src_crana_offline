@@ -1,6 +1,5 @@
 package net.floodlightcontroller.crana;
 
-
 import java.io.*;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -64,13 +63,12 @@ import net.floodlightcontroller.crana.trafficengineering.*;
 import net.floodlightcontroller.crana.voting.Voting;
 import net.floodlightcontroller.crana.cheat_off.Cheating;
 
-
 public class Coordinator implements IFloodlightModule, ITopologyListener, ISflowListener{
 	private static final Logger log = LoggerFactory.getLogger(Coordinator.class);
 	private static boolean isEnabled = false;
 	private static final String ENABLED_STR = "enable";
 	
-	protected static String ROUTING_CHOICE = "TE";
+	protected static String ROUTING_CHOICE = "Voting";
 	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // 
 	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 	public static final int FLOW_DURATION = 6;//6min 的打流时间
@@ -78,7 +76,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	public static final int PERIOD = 400;
 	public static final int BG_DEMAND_NUM = 20; //background demand num
 	public static final int APP_DEMAND_NUM = 15; //app demand num
-	public static final int UTILTESTNUM=20;//测试链路利用率的次数的参数
+	//public static final int UTILTESTNUM=20;//测试链路利用率的次数的参数
 	public static Random rand;
 
 	protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
@@ -104,7 +102,6 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	private static Map<NodePortTuple,InterfaceStatistics > statisticsMap;
 	private static List<Edge> incL;
 	static ArrayList<Demand> req;
-	public ArrayList<Integer> appver;// Overlay vertex
 	public static long topoTS = 0;
 	
 	private int utilTestNum;//测试链路利用率的次数
@@ -378,7 +375,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 				t=rand.nextInt(numDpid);
 			}while(s==t);
 			//int flow = rand.nextInt(15)+2;
-			int flow = 409600*(rand.nextInt(5)+1);
+			int flow = 409600*10;//*(rand.nextInt(5)+1);
 			Demand dem = new Demand(i, s, t, flow);
 			req.add(dem);			
 			outReq.println(dem.printDem());
@@ -394,7 +391,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		return "time x h" + (t+1) + " xterm -title d" + i + "_h" + (t+1) + "_recv -e ITGRecv -l log" + i + "\r\n"
 				+ "py time.sleep(0.5)\r\n"
 				+ "time x h" + (s+1) + " xterm -title d" + i + "_h" + (s+1) 
-				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C " + flow/512/8 +" -c 512 -t "+ FLOW_DURATION*60*1000 +" \r\n"
+				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C " + 100 +" -c 5120 -t "+ FLOW_DURATION*60*1000 +" \r\n"
 				+ "py time.sleep(0.5)\r\n";
 	}
 	
@@ -517,20 +514,17 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 			
 			Runnable test2 = new TestUtil();
 			ScheduledExecutorService service2 =Executors.newSingleThreadScheduledExecutor();
-			service2.scheduleAtFixedRate(test2, FLOW_DURATION*60/3, FLOW_DURATION*60/3/UTILTESTNUM, TimeUnit.SECONDS);
+			service2.scheduleAtFixedRate(test2, FLOW_DURATION*60/2, 5, TimeUnit.SECONDS);
 		}
 	}
 	
 	class TestUtil implements Runnable{
 		public void run(){
 			try{
-				if(utilTestNum>UTILTESTNUM)return;
 				double util_temp=calUtil();
 				utilTestNum++;
 				utilSum+=util_temp;
-				if(utilTestNum==UTILTESTNUM){
-					System.err.println("************ 最大链路利用率 是  " + utilSum/utilTestNum + "  ***************");
-				}
+				System.err.println("************ 最大链路利用率 是  " + utilSum/utilTestNum + "  ***************");
 			}
 			catch(Exception e){
     			e.printStackTrace();

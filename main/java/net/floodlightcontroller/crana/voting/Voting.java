@@ -5,7 +5,7 @@ import java.util.Scanner;
 
 public class Voting {
 	public static int callVoting() {
-		String path="D:\\TE\\Release\\TE.exe";
+		String path="D:\\vs project\\cplex_try2\\Release\\cplex_try2.exe";
         System.out.println("#*#*#  Voting is at your service");
         ProcessBuilder pb = new ProcessBuilder(path);
         pb.redirectErrorStream(true);

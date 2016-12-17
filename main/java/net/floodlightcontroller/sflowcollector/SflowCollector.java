@@ -44,7 +44,7 @@ public class SflowCollector implements IFloodlightModule, ISflowCollectionServic
 	public static final String sflowRtUriPropStr = "net.floodlightcontroller.sflowcollector.SflowCollector.uri";
 	
 	public static final long DEFAULT_FIRST_DELAY = 10000L; //在启动的10秒之后执行
-	public static final long DEFAULT_PERIOD = 5000L; //收集周期
+	public static final long DEFAULT_PERIOD = 5000L; //收集周期，每5秒收集一次
 	protected IOFSwitchService switchService;
 	protected Map<Integer, InterfaceStatistics> ifIndexIfStatMap;  // sflow中的端口和收集的数据映射，注意这里的端口并不是交换机的端口
 	protected Set<ISflowListener> sflowListeners;
