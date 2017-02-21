@@ -153,8 +153,10 @@ public class AppCookie {
         if ((application & APP_ID_MASK) != application) {
             throw new InvalidAppIDValueException(application);
         }
+        //如果查到application，则返回appIdMap里对应的appName，否则返回null
         String oldApp = appIdMap.putIfAbsent(application, appName);
         if (oldApp != null && !oldApp.equals(appName)) {
+        	//如果遇到了重复的appId，但是appName不重复，就throw；如果重复appId和appName，就不throw
             throw new AppIDInUseException(application, oldApp, appName);
         }
     }

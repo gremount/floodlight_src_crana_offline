@@ -68,10 +68,10 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	private static boolean isEnabled = false;
 	private static final String ENABLED_STR = "enable";
 	
-	protected static String ROUTING_CHOICE = "Voting";
+	protected static String ROUTING_CHOICE = "TE";
 	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // 
 	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
-	public static final int FLOW_DURATION = 6;//6min 的打流时间
+	public static final int FLOW_DURATION = 3;//3min 的打流时间
 	public static final int INITIAL_DEALY = 20;
 	public static final int PERIOD = 400;
 	public static final int BG_DEMAND_NUM = 20; //background demand num
@@ -80,8 +80,8 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	public static Random rand;
 
 	protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
-	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 300; // in seconds
-	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 310; // infinite
+	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 3000; // in seconds
+	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 3100; // infinite
 	public static int FLOWMOD_DEFAULT_PRIORITY = 233; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 	public static final int MAX_DEMAND = 20; 
 	public static final int DEMAND_NUM = 30; 
@@ -107,9 +107,15 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	private int utilTestNum;//测试链路利用率的次数
 	private double utilSum;//多次测试链路利用率结果的和，为了后面求多次平均
 	
+	private String mluOutFileAddress="outputFile//mlu.txt";
+	private String pathAddress="inputFile//path.txt";
+	private String topoAddress="inputFile//topo.txt";
+	private String reqAddress="inputFile//req.txt";
+	private String gtAddress="inputFile//ditg.txt";
+	
 	//after computing route
 	public void PushAllRoute(){
-		Map<Integer, List<Integer>> paths = readPath("inputFile//path.txt");
+		Map<Integer, List<Integer>> paths = readPath(pathAddress);
 		
 		for(Demand dm : req){
 			DatapathId srcDpid = DatapathId.of(dm.getSrc() + 1);
@@ -214,6 +220,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 			flags.add(OFFlowModFlags.SEND_FLOW_REM);
 			fmb.setFlags(flags);
 		    
+			//cookie是用来区分流表是由哪一个APP添加的
 			//U64 cookie = U64.of(0);
 			U64 cookie = AppCookie.makeCookie(Coordinator_APP_ID, 0);
 			
@@ -299,7 +306,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	// called when topo changed or sflow get new statistics
 	public void updateTopo() {
 		
-		File file = new File("inputFile//topo.txt");
+		File file = new File(topoAddress);
 		try{
 			PrintWriter output = new PrintWriter(file);
 			incL.clear();
@@ -337,7 +344,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		//int numDem = rand.nextInt(numDpid*(numDpid-1)/2) + 1;
 		//int numAppDem = rand.nextInt(numDem) + 1;
 		req.clear();
-		GenDemand(numDpid,numDpid,"inputFile//req.txt", "inputFile//gt.txt");// 根据图的点数产生背景流需求
+		GenDemand(numDpid,numDpid,reqAddress, gtAddress);// 根据图的点数产生背景流需求
 	}
 	
 	/**
@@ -388,10 +395,10 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 	}
 	
 	public String genTraffic(int i, int s, int t, int flow){
-		return "time x h" + (t+1) + " xterm -title d" + i + "_h" + (t+1) + "_recv -e ITGRecv -l log" + i + "\r\n"
+		return "time x h" + (t+1) + " xterm -title d" + i + "_h" + (t+1) + "_recv -e ITGRecv " + "\r\n"
 				+ "py time.sleep(0.5)\r\n"
 				+ "time x h" + (s+1) + " xterm -title d" + i + "_h" + (s+1) 
-				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C " + 100 +" -c 5120 -t "+ FLOW_DURATION*60*1000 +" \r\n"
+				+ "_send -e ITGSend -a 10.0.0." + (t+1) + " -T UDP -C " + 300 +" -c 1500 -t "+ FLOW_DURATION*60*1000 + " -l log" + i + " \r\n"
 				+ "py time.sleep(0.5)\r\n";
 	}
 	
@@ -440,15 +447,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		//System.out.println(allLinks);
 	}
 	
-	double calUtil(){
-		double util_temp=0.0;
-		for(Edge lk:incL){
-			if(util_temp<lk.bw/lk.capacity)
-				util_temp=lk.bw/lk.capacity;
-		}
-		System.err.println("-----------  now utilization = "+util_temp);
-		return util_temp;
-	}
+	
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -469,6 +468,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		l.add(ITopologyService.class);
 		l.add(ISflowCollectionService.class);
 		l.add(IThreadPoolService.class);
+		l.add(IOFSwitchService.class);
 		return l;
 	}
 
@@ -479,6 +479,7 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 		//threadPoolService = context.getServiceImpl(IThreadPoolService.class);
 		
+		//Dampens OFMessages sent to an OF switch
 		messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
 				EnumSet.of(OFType.FLOW_MOD),
 				OFMESSAGE_DAMPER_TIMEOUT);
@@ -510,21 +511,47 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 			log.info("\n*****Coordinator starts*****");
 			Runnable test = new TestTask();
 			ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();  
-			service.scheduleAtFixedRate(test, INITIAL_DEALY, PERIOD, TimeUnit.SECONDS); 
+			//service.scheduleAtFixedRate(test, INITIAL_DEALY, PERIOD, TimeUnit.SECONDS); 
 			
 			Runnable test2 = new TestUtil();
 			ScheduledExecutorService service2 =Executors.newSingleThreadScheduledExecutor();
-			service2.scheduleAtFixedRate(test2, FLOW_DURATION*60/2, 5, TimeUnit.SECONDS);
+			service2.scheduleAtFixedRate(test2, INITIAL_DEALY+20, 5, TimeUnit.SECONDS);
+			
+			File teFile = new File(mluOutFileAddress);
+			FileWriter teFileWriter;
+			try {
+				teFileWriter = new FileWriter(teFile);
+				teFileWriter.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
+	}
+	
+	
+	double calUtil() throws IOException{
+		double util_temp=0.0;
+		double std_capacity=100000000;//100Mbit/s
+		for(Edge lk:incL){
+			if(util_temp<lk.bw/std_capacity)
+				util_temp=lk.bw/std_capacity;
+		}
+		System.err.println("-----------  now utilization = "+util_temp);
+		
+		//文件记录输出
+		File teFile = new File(mluOutFileAddress);
+		FileWriter teFileWriter = new FileWriter(teFile,true);
+		teFileWriter.write(util_temp + " \r\n");
+		teFileWriter.close();
+		
+		return util_temp;
 	}
 	
 	class TestUtil implements Runnable{
 		public void run(){
 			try{
-				double util_temp=calUtil();
-				utilTestNum++;
-				utilSum+=util_temp;
-				System.err.println("************ 最大链路利用率 是  " + utilSum/utilTestNum + "  ***************");
+				double util_temp=calUtil();//后期可以用来求平均
 			}
 			catch(Exception e){
     			e.printStackTrace();
@@ -533,13 +560,33 @@ public class Coordinator implements IFloodlightModule, ITopologyListener, ISflow
 		}
 	}
 	
+	void readReq() throws IOException{
+		
+		File file = new File(reqAddress);
+		Scanner input = new Scanner(file);
+		int num = input.nextInt();
+		System.err.println(num);
+		while(input.hasNext()) {
+			int id = input.nextInt(),s = input.nextInt(),t=input.nextInt();
+			double flow=input.nextDouble();
+			Demand dem = new Demand(id,s,t,flow);
+			req.add(dem);
+		}
+		input.close();
+	}
 	
 	class TestTask implements Runnable{
     	public void run(){
     		
     		int exitid = 1;
     		try{
+    			//1)第一个算法运行
+    			updateTopo();
     			GenerateDemand();
+    			
+    			//2)第二个算法运行
+    			//updateTopo();
+    			//readReq();
     			
     			long t0 = System.currentTimeMillis();
     			

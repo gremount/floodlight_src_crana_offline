@@ -123,8 +123,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			if (eth.isBroadcast() || eth.isMulticast()) {
 				doFlood(sw, pi, cntx);
 			} else {
-				preProcess(sw, pi, cntx, false);
-				//doForwardFlow(sw, pi, cntx, false);
+				//preProcess(sw, pi, cntx, false);
+				doForwardFlow(sw, pi, cntx, false);
 			}
 		}
 
@@ -183,9 +183,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				return;
 			}
 			
+			/*
 			if (eth.getEtherType() == EthType.IPv4) {
 				return;
-			}
+			}*/
 			
 			//System.out.println("not IPv4");
 
